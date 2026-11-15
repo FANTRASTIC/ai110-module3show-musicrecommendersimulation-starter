@@ -1,34 +1,61 @@
 """
 Command line runner for the Music Recommender Simulation.
 
-Loads the song catalog, scores every song against a taste profile,
-and prints the top recommendations with the reasons behind each score.
+Runs several taste profiles (normal and adversarial) against the song catalog and
+prints the top recommendations with the reasons behind each score.
+
+Usage:
+    python -m src.main               # baseline weights
+    python -m src.main --experiment  # energy x2, genre x0.5
 """
 
-from src.recommender import load_songs, recommend_songs
+import sys
+from typing import Dict, Optional
+
+from src.recommender import DEFAULT_WEIGHTS, load_songs, max_score, recommend_songs
+
+PROFILES: Dict[str, Dict] = {
+    # Normal profiles
+    "High-Energy Pop": {"genre": "pop", "mood": "happy", "energy": 0.9, "likes_acoustic": False},
+    "Chill Lofi": {"genre": "lofi", "mood": "chill", "energy": 0.4, "likes_acoustic": True},
+    "Deep Intense Rock": {"genre": "rock", "mood": "intense", "energy": 0.92, "likes_acoustic": False},
+    # Adversarial / edge-case profiles
+    "Conflicting (sad but high energy)": {"genre": "blues", "mood": "sad", "energy": 0.9, "likes_acoustic": False},
+    "Unknown genre (k-pop)": {"genre": "k-pop", "mood": "happy", "energy": 0.8, "likes_acoustic": False},
+    "Mixed signals (pop + chill, mid energy)": {"genre": "pop", "mood": "chill", "energy": 0.5, "likes_acoustic": True},
+}
+
+# Experiment: double the importance of energy, halve the importance of genre
+EXPERIMENT_WEIGHTS = {**DEFAULT_WEIGHTS, "energy": DEFAULT_WEIGHTS["energy"] * 2, "genre": DEFAULT_WEIGHTS["genre"] / 2}
+
+
+def print_recommendations(name: str, prefs: Dict, songs, weights: Optional[Dict[str, float]]) -> None:
+    """Print the top 5 recommendations for one profile in a readable layout."""
+    top = max_score(weights)
+    print("=" * 64)
+    print(f"PROFILE: {name}")
+    print(f"  genre={prefs['genre']}, mood={prefs['mood']}, energy={prefs['energy']}, "
+          f"likes_acoustic={prefs['likes_acoustic']}")
+    print("=" * 64)
+    for rank, (song, score, explanation) in enumerate(recommend_songs(prefs, songs, k=5, weights=weights), start=1):
+        print(f"{rank}. {song['title']} by {song['artist']} [{song['genre']}/{song['mood']}]")
+        print(f"   Score: {score:.2f} / {top:.2f}")
+        for reason in explanation.split("; "):
+            print(f"     - {reason}")
+    print()
 
 
 def main() -> None:
-    """Run the recommender for the default profile and print a readable report."""
+    """Load the catalog and print recommendations for every profile."""
+    experiment = "--experiment" in sys.argv
+    weights = EXPERIMENT_WEIGHTS if experiment else None
+
     songs = load_songs("data/songs.csv")
     print(f"Loaded songs: {len(songs)}")
+    print(f"Weights: {weights or DEFAULT_WEIGHTS} (max score {max_score(weights):.2f})\n")
 
-    # Default starter profile
-    user_prefs = {"genre": "pop", "mood": "happy", "energy": 0.8, "likes_acoustic": False}
-
-    recommendations = recommend_songs(user_prefs, songs, k=5)
-
-    print(f"\nProfile: genre={user_prefs['genre']}, mood={user_prefs['mood']}, "
-          f"energy={user_prefs['energy']}, likes_acoustic={user_prefs['likes_acoustic']}")
-    print("\nTop recommendations:")
-    print("=" * 60)
-    for rank, (song, score, explanation) in enumerate(recommendations, start=1):
-        print(f"{rank}. {song['title']} by {song['artist']}")
-        print(f"   Score: {score:.2f} / 6.00")
-        print("   Reasons:")
-        for reason in explanation.split("; "):
-            print(f"     - {reason}")
-        print("-" * 60)
+    for name, prefs in PROFILES.items():
+        print_recommendations(name, prefs, songs, weights)
 
 
 if __name__ == "__main__":
