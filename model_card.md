@@ -32,6 +32,15 @@ Prompts:
 
 Avoid code here. Pretend you are explaining the idea to a friend who does not program.
 
+**In plain language:** the recommender acts like a judge giving every song in the catalog a score out of 6 for one listener, then handing back the highest-scoring songs.
+
+- A song earns **2 points** if its genre is the listener's favorite genre, and **1 point** if its mood matches their favorite mood. These are all-or-nothing.
+- For **energy** and **acousticness**, the song earns points for being *close* to what the listener wants, not for being high or low. A song exactly on target earns the full 2 points (energy) or 1 point (acousticness), and the points shrink the further away it is. A listener who wants calm music gets no credit for a loud, fast song, however "energetic" it is.
+- Every song is scored independently. Then all songs are lined up from highest to lowest score and the top few are shown.
+- Each recommendation comes with its **reasons** (for example "genre match (+2.0)"), so you can see exactly where each point came from.
+
+Compared with the starter code, which only returned the first songs in the file, this version actually scores and ranks them. It runs entirely from the command line and uses no listening history or other users, only song attributes.
+
 ---
 
 ## 4. Data  
